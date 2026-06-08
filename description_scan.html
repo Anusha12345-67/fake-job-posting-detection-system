@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Description Scan - Fake Job Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); position: relative; }
+        body::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%); pointer-events: none; }
+        .bg-pattern { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: radial-gradient(circle at 20% 80%, rgba(120,119,198,0.3) 0%, transparent 50%); pointer-events: none; z-index: 1; }
+        .navbar { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); box-shadow: 0 2px 20px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
+        .nav-container { max-width: 1400px; margin: 0 auto; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; background-clip: text; color: transparent; display: flex; align-items: center; gap: 0.5rem; }
+        .logo i { font-size: 1.8rem; color: #667eea; }
+        .nav-links { display: flex; align-items: center; gap: 1.5rem; }
+        .nav-links span { color: #667eea; font-weight: 600; }
+        .back-btn, .logout-btn { padding: 0.5rem 1.2rem; border-radius: 50px; text-decoration: none; font-weight: 500; transition: all 0.3s; }
+        .back-btn { background: #667eea; color: white; }
+        .back-btn:hover { background: #5a67d8; transform: translateY(-2px); }
+        .logout-btn { background: #ef4444; color: white; }
+        .logout-btn:hover { background: #dc2626; transform: translateY(-2px); }
+        .container { position: relative; z-index: 2; max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+        .header { text-align: center; margin-bottom: 40px; animation: slideDown 0.8s ease-out; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+        .header h1 { color: white; font-size: 2.8em; font-weight: 700; margin-bottom: 10px; }
+        .header p { color: rgba(255,255,255,0.9); font-size: 1.1em; }
+        .real-time-badge { display: inline-block; padding: 5px 15px; background: rgba(255,255,255,0.2); border-radius: 20px; color: white; font-size: 0.8em; margin-top: 10px; }
+        .main-card { background: rgba(255,255,255,0.98); backdrop-filter: blur(10px); border-radius: 20px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: fadeInUp 0.8s ease-out; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px; }
+        .stat-card { padding: 20px; border-radius: 12px; color: white; text-align: center; cursor: pointer; transition: all 0.3s ease; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-card.total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .stat-card.real { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .stat-card.fake { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
+        .stat-value { font-size: 2.5em; font-weight: 700; margin-bottom: 5px; transition: all 0.5s ease; }
+        .stat-label { font-size: 0.9em; opacity: 0.9; text-transform: uppercase; }
+        .click-hint { font-size: 0.7em; opacity: 0.7; margin-top: 5px; }
+        .input-label { font-weight: 600; margin-bottom: 12px; display: block; color: #333; font-size: 1.1em; }
+        textarea { width: 100%; min-height: 150px; padding: 18px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 15px; font-family: 'Inter', sans-serif; resize: vertical; transition: all 0.3s ease; background: #fafafa; }
+        textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); background: white; }
+        .action-buttons { display: flex; gap: 15px; margin-top: 25px; }
+        .check-btn { flex: 1; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+        .check-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.6); }
+        .clear-btn { padding: 16px 30px; background: #f0f0f0; color: #666; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; font-weight: 500; transition: all 0.3s ease; }
+        .clear-btn:hover { background: #e0e0e0; }
+        .result-section { margin-top: 35px; padding-top: 30px; border-top: 2px solid #f0f0f0; }
+        .prediction-box { padding: 25px; border-radius: 15px; margin-bottom: 20px; text-align: center; animation: pulse 2s ease-in-out; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.9; } }
+        .prediction-real { background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); border-left: 5px solid #11998e; }
+        .prediction-fake { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-left: 5px solid #d63031; }
+        .prediction-text { font-size: 2em; font-weight: 700; color: white; text-shadow: 1px 1px 3px rgba(0,0,0,0.2); margin-bottom: 10px; }
+        .confidence-bar { margin-top: 15px; }
+        .confidence-label { display: flex; justify-content: space-between; color: rgba(255,255,255,0.9); margin-bottom: 8px; }
+        .progress-bar { height: 10px; background: rgba(255,255,255,0.3); border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; background: white; transition: width 1s; border-radius: 10px; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+        .indicators-box { margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 12px; }
+        .indicators-title { font-weight: 600; color: #333; margin-bottom: 15px; font-size: 1.1em; }
+        .indicator-tag { display: inline-block; padding: 6px 14px; margin: 5px; background: #e74c3c; color: white; border-radius: 20px; font-size: 13px; font-weight: 500; }
+        .history-section { margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 12px; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .history-header h4 { color: #333; font-size: 1.1em; font-weight: 600; }
+        .view-all-btn { padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.3s ease; }
+        .view-all-btn:hover { background: #5a67d8; transform: translateY(-2px); }
+        .history-list { max-height: 300px; overflow-y: auto; }
+        .history-item { padding: 12px 15px; margin-bottom: 10px; background: white; border-radius: 10px; border-left: 4px solid #667eea; transition: all 0.3s ease; }
+        .history-item:hover { transform: translateX(5px); box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .history-item.real { border-left-color: #11998e; }
+        .history-item.fake { border-left-color: #eb3349; }
+        .history-text { font-size: 13px; color: #333; margin-bottom: 8px; word-break: break-all; line-height: 1.4; }
+        .history-meta { display: flex; justify-content: space-between; align-items: center; }
+        .history-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .history-badge.real { background: #d4edda; color: #155724; }
+        .history-badge.fake { background: #f8d7da; color: #721c24; }
+        .history-info { display: flex; gap: 15px; font-size: 11px; color: #666; }
+        .history-time { font-size: 11px; color: #999; }
+        .graph-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        .graph-container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .empty-history { text-align: center; padding: 40px; color: #999; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-content { background: white; margin: 50px auto; width: 90%; max-width: 800px; max-height: 80vh; border-radius: 20px; overflow-y: auto; animation: slideUp 0.3s ease; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header { padding: 25px 30px; border-bottom: 2px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; border-radius: 20px 20px 0 0; }
+        .modal-header.total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .modal-header.real { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; }
+        .modal-header.fake { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); color: white; }
+        .modal-header h2 { font-size: 1.8em; font-weight: 600; }
+        .close { color: white; font-size: 35px; font-weight: bold; cursor: pointer; opacity: 0.8; transition: opacity 0.3s; }
+        .close:hover { opacity: 1; }
+        .modal-body { padding: 30px; overflow-y: auto; flex: 1; }
+        .job-item { padding: 15px; margin-bottom: 15px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #667eea; }
+        .job-item.real { border-left-color: #11998e; }
+        .job-item.fake { border-left-color: #eb3349; }
+        .job-text { font-size: 14px; color: #333; margin-bottom: 10px; line-height: 1.5; }
+        .job-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #666; }
+        .job-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .job-badge.real { background: #d4edda; color: #155724; }
+        .job-badge.fake { background: #f8d7da; color: #721c24; }
+        .empty-state { text-align: center; padding: 40px; color: #999; }
+        .empty-state i { font-size: 3em; margin-bottom: 20px; opacity: 0.5; }
+        .footer { text-align: center; margin-top: 30px; color: rgba(255,255,255,0.8); font-size: 0.9em; }
+        @media (max-width: 768px) {
+            .header h1 { font-size: 2em; }
+            .main-card { padding: 25px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .prediction-text { font-size: 1.5em; }
+            .modal-content { width: 95%; margin: 20px auto; }
+            .history-meta { flex-direction: column; align-items: flex-start; gap: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    <nav class="navbar"><div class="nav-container"><div class="logo"><i class="fas fa-shield-alt"></i><span>Fake Job Detector</span></div><div class="nav-links"><span><i class="fas fa-user-circle"></i> {{ name }}</span><a href="/dashboard" class="back-btn"><i class="fas fa-arrow-left"></i> Back</a><a href="/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a></div></div></nav>
+    <div class="container"><div class="header"><h1>🔍 Description Scan</h1><p>AI-Powered Real-Time System to Identify Fraudulent Job Postings</p><span class="real-time-badge">🔄 Real-Time Analysis Mode</span></div><div class="main-card"><div class="stats-grid"><div class="stat-card total" onclick="showDetails('total')"><div class="stat-value" id="totalJobs">{{ total_jobs }}</div><div class="stat-label">Total Analyzed</div><div class="click-hint">🔍 Click for details</div></div><div class="stat-card real" onclick="showDetails('real')"><div class="stat-value" id="realJobs">{{ real_jobs }}</div><div class="stat-label">Real Jobs</div><div class="click-hint">🔍 Click for details</div></div><div class="stat-card fake" onclick="showDetails('fake')"><div class="stat-value" id="fakeJobs">{{ fake_jobs }}</div><div class="stat-label">Fake Jobs</div><div class="click-hint">🔍 Click for details</div></div></div><form method="POST"><label class="input-label"><i class="fas fa-file-alt"></i> Enter Job Description</label><textarea name="job_text" placeholder="Paste the job description here...">{{ input_text }}</textarea><div class="action-buttons"><button type="submit" class="check-btn"><i class="fas fa-search"></i> Analyze</button><button type="button" class="clear-btn" onclick="clearText()"><i class="fas fa-trash"></i> Clear</button></div></form>{% if prediction %}<div class="result-section"><div class="prediction-box {{ 'prediction-real' if is_real else 'prediction-fake' }}"><div class="prediction-text">{{ prediction }}</div><div class="confidence-bar"><div class="confidence-label"><span>Confidence</span><span>{{ confidence }}%</span></div><div class="progress-bar"><div class="progress-fill" style="width: {{ confidence }}%"></div></div></div></div>{% if suspicious_indicators %}<div class="indicators-box"><div class="indicators-title"><i class="fas fa-exclamation-triangle"></i> Suspicious Indicators:</div>{% for indicator in suspicious_indicators %}<span class="indicator-tag">{{ indicator }}</span>{% endfor %}</div>{% endif %}</div>{% endif %}
+        <div class="history-section"><div class="history-header"><h4><i class="fas fa-history"></i> Recent Scans</h4><button class="view-all-btn" onclick="showDetails('total')">View All</button></div><div class="history-list" id="historyList"></div></div>
+        {% if scan_performed %}
+        <div class="graph-section">
+            <canvas id="descChart" width="400" height="200"></canvas>
+        </div>
+        {% endif %}
+    </div><div class="footer"><p>© 2026 Fake Job Detection System | Powered by ML</p></div></div>
+    <div id="detailsModal" class="modal"><div class="modal-content"><div class="modal-header" id="modalHeader"><h2 id="modalTitle">Details</h2><span class="close" onclick="closeModal()">&times;</span></div><div class="modal-body" id="modalBody"></div></div></div>
+    <script>
+        let scannedJobs = {{ scanned_jobs | tojson }};
+
+        {% if scan_performed %}
+        const descCtx = document.getElementById('descChart').getContext('2d');
+        new Chart(descCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Real Jobs', 'Fake Jobs'],
+                datasets: [{
+                    data: [{{ real_jobs }}, {{ fake_jobs }}],
+                    backgroundColor: ['#11998e', '#eb3349'],
+                    borderColor: ['#0f7d6e', '#c72a3f'],
+                    borderWidth: 2,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Description Scan Results',
+                        font: { size: 16, weight: 'bold' }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, precision: 0 },
+                        title: { display: true, text: 'Number of Jobs', font: { weight: 'bold' } }
+                    },
+                    x: {
+                        title: { display: true, text: 'Job Type', font: { weight: 'bold' } }
+                    }
+                }
+            }
+        });
+        {% endif %}
+
+        function renderHistory() {
+            const historyList = document.getElementById('historyList');
+            if (scannedJobs.length === 0) {
+                historyList.innerHTML = '<div class="empty-history"><div style="font-size:3em;margin-bottom:20px;">📭</div><h3>No scans yet</h3><p>Start analyzing job descriptions to see history here</p></div>';
+                return;
+            }
+            const recentItems = scannedJobs.slice().reverse().slice(0,5);
+            let html = '';
+            recentItems.forEach(job => {
+                const itemClass = job.prediction === 'Real' ? 'real' : 'fake';
+                const badgeClass = job.prediction === 'Real' ? 'real' : 'fake';
+                const emoji = job.prediction === 'Real' ? '✅' : '⚠️';
+                html += `<div class="history-item ${itemClass}"><div class="history-text">${escapeHtml(job.text)}</div><div class="history-meta"><div><span class="history-badge ${badgeClass}">${emoji} ${job.prediction}</span><span class="history-info">Confidence: ${job.confidence}%</span></div><span class="history-time">${job.timestamp}</span></div></div>`;
+            });
+            historyList.innerHTML = html;
+        }
+        function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+        function clearText() { document.querySelector('textarea[name="job_text"]').value = ''; }
+        function animateCounter(element, start, end, duration) { let range = end - start, increment = range / (duration / 10), current = start; const timer = setInterval(() => { current += increment; if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) { current = end; clearInterval(timer); } element.textContent = Math.round(current); }, 10); }
+        function showDetails(type) {
+            const modal = document.getElementById('detailsModal'), modalHeader = document.getElementById('modalHeader'), modalTitle = document.getElementById('modalTitle'), modalBody = document.getElementById('modalBody');
+            modalHeader.className = 'modal-header';
+            let title = '', jobs = [];
+            if (type === 'total') { title = '📊 All Analyzed Jobs'; modalHeader.classList.add('total'); jobs = scannedJobs; }
+            else if (type === 'real') { title = '✅ Real Job Postings'; modalHeader.classList.add('real'); jobs = scannedJobs.filter(j => j.prediction === 'Real'); }
+            else { title = '⚠️ Fake Job Postings'; modalHeader.classList.add('fake'); jobs = scannedJobs.filter(j => j.prediction === 'Fake'); }
+            modalTitle.textContent = title;
+            if (jobs.length === 0) { modalBody.innerHTML = '<div class="empty-state"><div style="font-size:3em;margin-bottom:20px;">📭</div><h3>No jobs analyzed yet</h3><p>Start analyzing job postings to see details here</p></div>'; }
+            else { let html = ''; jobs.slice().reverse().forEach(job => { const itemClass = job.prediction === 'Real' ? 'real' : 'fake'; const badgeClass = job.prediction === 'Real' ? 'real' : 'fake'; const emoji = job.prediction === 'Real' ? '✅' : '⚠️'; html += `<div class="job-item ${itemClass}"><div class="job-text">${escapeHtml(job.text)}</div><div class="job-meta"><span class="job-badge ${badgeClass}">${emoji} ${job.prediction}</span><span>Confidence: ${job.confidence}% | ${job.timestamp}</span></div></div>`; }); modalBody.innerHTML = html; }
+            modal.style.display = 'block';
+        }
+        function closeModal() { document.getElementById('detailsModal').style.display = 'none'; }
+        window.onclick = function(event) { if (event.target == document.getElementById('detailsModal')) closeModal(); }
+        window.addEventListener('load', function() {
+            const totalEl = document.getElementById('totalJobs'), realEl = document.getElementById('realJobs'), fakeEl = document.getElementById('fakeJobs');
+            if (totalEl && realEl && fakeEl) {
+                const currentTotal = parseInt(totalEl.textContent) || 0, currentReal = parseInt(realEl.textContent) || 0, currentFake = parseInt(fakeEl.textContent) || 0;
+                if (currentTotal > 0) { totalEl.textContent = '0'; realEl.textContent = '0'; fakeEl.textContent = '0';
+                    setTimeout(() => { animateCounter(totalEl, 0, currentTotal, 1000); animateCounter(realEl, 0, currentReal, 1000); animateCounter(fakeEl, 0, currentFake, 1000); }, 100);
+                }
+            }
+            renderHistory();
+        });
+    </script>
+</body>
+</html>
